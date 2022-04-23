@@ -1,0 +1,8 @@
+{
+  "name": "Quake Vault",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "react",
+  "id": "4d008a1d"
+}
