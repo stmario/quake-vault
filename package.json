@@ -67,5 +67,5 @@
   "devDependencies": {
     "@capacitor/cli": "3.5.0"
   },
-  "description": "An Ionic project"
+  "description": "An Ionic project, developed for the ChainLink Hackathon Spring 2022"
 }
