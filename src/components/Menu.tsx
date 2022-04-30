@@ -1,4 +1,5 @@
 import {
+  IonButton,
   IonContent,
   IonIcon,
   IonItem,
@@ -7,7 +8,7 @@ import {
   IonListHeader,
   IonMenu,
   IonMenuToggle,
-  IonNote,
+  IonNote, useIonToast,
 } from '@ionic/react';
 
 import { useLocation } from 'react-router-dom';
@@ -18,6 +19,9 @@ import {
   peopleCircleOutline
 } from 'ionicons/icons';
 import './Menu.css';
+import {useState} from "react";
+import {ethers} from 'ethers'
+import {ftmTestnetRpc, getNetworkStrings, linkContractAddress} from "../util/chainUtility";
 
 interface AppPage {
   url: string;
@@ -49,14 +53,97 @@ const appPages: AppPage[] = [
 
 
 const Menu: React.FC = () => {
+  const [defaultNetwork, setDefaultNetwork] = useState('Not connected');
+  const [defaultAccount, setDefaultAccount] = useState(null);
+  const [userNetworkTokenBalance, setUserNetworkTokenBalance] = useState('');
+  const [connButtonText, setConnButtonText] = useState('Connect with MetaMask');
+  const [userNetworkSymbol, setUsernetworkSymbol] = useState('');
+  const [linkBalance, setLinkBalance] = useState('');
+  const [present, dismiss] = useIonToast();
   const location = useLocation();
+
+  const connectWalletHandler = () => {
+    if (window.ethereum && window.ethereum.isMetaMask) {
+      console.log('MetaMask detected.');
+
+      window.ethereum.request({method: 'eth_requestAccounts'})
+          .then((result: any[]) => {
+            accountChangedHandler(result[0]);
+            setConnButtonText('Wallet Connected');
+            getAccountBalance(result[0]);
+            const networkStrings = getNetworkStrings(window.ethereum.networkVersion);
+            setDefaultNetwork(networkStrings.name)
+            setUsernetworkSymbol(networkStrings.symbol)
+          })
+          .catch((error: { message: string; }) => {
+            present(error.message, 5000);
+
+          });
+
+    } else {
+      console.log('MetaMask not present.');
+      present('Please install the MetaMask browser extension to connect.', 5000);
+    }
+  }
+
+  // update account, will cause component re-render
+  const accountChangedHandler = (newAccount: any) => {
+    setDefaultAccount(newAccount);
+    getAccountBalance(newAccount.toString());
+  }
+
+  const getAccountBalance = (account: string) => {
+    window.ethereum.request({method: 'eth_getBalance', params: [account, 'latest']})
+        .then((balance: ethers.BigNumberish) => {
+          setUserNetworkTokenBalance((ethers.utils.formatEther(balance)));
+          const genericErc20Abi = [
+            // balanceOf
+            {
+              constant: true,
+
+              inputs: [{ name: "_owner", type: "address" }],
+
+              name: "balanceOf",
+
+              outputs: [{ name: "balance", type: "uint256" }],
+
+              type: "function",
+            },
+
+          ];
+          const contract = new ethers.Contract(linkContractAddress, genericErc20Abi, ethers.getDefaultProvider(ftmTestnetRpc));
+          contract.balanceOf(account)
+                .then((linkBalance: ethers.BigNumberish) =>{
+                      setLinkBalance(ethers.utils.formatEther(linkBalance));
+                    }
+                )
+        })
+        .catch((error: { message: string; }) => {
+          present(error.message, 5000);
+        });
+  };
+
+  const chainChangedHandler = () => {
+    // reload the page to avoid any errors with chain change mid use of application
+    window.location.reload();
+  };
+
+
+  // listen for account changes
+  if (window.ethereum || window.ethereum.on){
+    window.ethereum.on('accountsChanged', accountChangedHandler);
+    window.ethereum.on('chainChanged', chainChangedHandler);
+  }
 
   return (
     <IonMenu contentId="main" type="overlay">
       <IonContent>
-        <IonList id="inbox-list">
-          <IonListHeader>Network</IonListHeader>
-          <IonNote>0x00...</IonNote>
+        <IonList id="quakeVault-list">
+          <IonListHeader><IonLabel>Network: {defaultNetwork}</IonLabel><IonButton onClick={connectWalletHandler}>{connButtonText}</IonButton></IonListHeader>
+          <IonNote>Address: {defaultAccount}</IonNote>
+
+          <IonNote>Native Token Balance: {userNetworkTokenBalance} {userNetworkSymbol}</IonNote>
+          <IonNote>ChainLink Balance: {linkBalance} LINK</IonNote>
           {appPages.map((appPage, index) => {
             return (
               <IonMenuToggle key={index} autoHide={false}>
@@ -69,7 +156,7 @@ const Menu: React.FC = () => {
           })}
         </IonList>
 
-        <IonList id="labels-list">
+        <IonList id="about-list">
           <IonListHeader>About</IonListHeader>
         </IonList>
       </IonContent>
