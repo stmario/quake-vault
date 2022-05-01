@@ -31,7 +31,7 @@ const Overview: React.FC = () => {
     console.log(earthQuakesLastYear);
 
     if(loading) return (
-        <IonHeader>Loading</IonHeader> //<IonProgressBar type="indeterminate" reversed={true}/>
+        <IonHeader><IonProgressBar type="indeterminate" reversed={true}/></IonHeader>
     );
 
     if (!earthQuakesLastYear) return (

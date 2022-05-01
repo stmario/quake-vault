@@ -12,6 +12,7 @@ import './Page.css';
 import {ReactElement} from "react";
 import Overview from "./Overview";
 import Insure from "./Insure";
+import Insurance from "./Insurance";
 
 interface LoadingProps {
 
@@ -22,7 +23,8 @@ const Page: React.FC<LoadingProps> = () => {
 
   const pages: {[name: string]: ReactElement} = {
       "Overview": <Overview/>,
-      "Insure": <Insure/>
+      "Insure": <Insure/>,
+      "Insurance": <Insurance/>
   };
 
   return (
