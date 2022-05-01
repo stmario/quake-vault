@@ -1,11 +1,29 @@
-import { IonButtons, IonContent, IonHeader, IonMenuButton, IonPage, IonTitle, IonToolbar } from '@ionic/react';
+import {
+    IonButtons,
+    IonContent,
+    IonHeader,
+    IonMenuButton,
+    IonPage,
+    IonTitle,
+    IonToolbar
+} from '@ionic/react';
 import { useParams } from 'react-router';
-import ExploreContainer from '../components/ExploreContainer';
 import './Page.css';
+import {ReactElement} from "react";
+import Overview from "./Overview";
+import Insure from "./Insure";
 
-const Page: React.FC = () => {
+interface LoadingProps {
 
+}
+
+const Page: React.FC<LoadingProps> = () => {
   const { name } = useParams<{ name: string; }>();
+
+  const pages: {[name: string]: ReactElement} = {
+      "Overview": <Overview/>,
+      "Insure": <Insure/>
+  };
 
   return (
     <IonPage>
@@ -24,8 +42,9 @@ const Page: React.FC = () => {
             <IonTitle size="large">{name}</IonTitle>
           </IonToolbar>
         </IonHeader>
-        <ExploreContainer name={name} />
       </IonContent>
+
+        {pages[name]}
     </IonPage>
   );
 };

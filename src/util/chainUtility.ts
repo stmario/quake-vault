@@ -1,8 +1,8 @@
 function getNetworkStrings(chainId: number) {
     const networks = {
-        1: {name: "Ethereum Mainnet", symbol: "ETH"},
-        250: {name: "Fantom Opera", symbol: "FTM"},
-        4002: {name: "Fantom Testnet", symbol: "FTM"}
+        1: {name: "Ethereum Mainnet", symbol: "ETH", defaultRpc: "https://mainnet.infura.io/v3/"},
+        250: {name: "Fantom Opera", symbol: "FTM", defaultRpc: "https://rpc.ftm.tools/"},
+        4002: {name: "Fantom Testnet", symbol: "FTM", defaultRpc: "https://rpc.testnet.fantom.network/"}
     };
     return networks[chainId as keyof typeof networks]
 }
@@ -13,9 +13,5 @@ function getContractAddress(chainId: number, symbol: string){
     };
     return addresses[chainId as keyof typeof addresses][symbol]
 }
-
-export const ftmTestnetRpc = "https://rpc.testnet.fantom.network/";
-
-export const linkContractAddress = "0xfaFedb041c0DD4fA2Dc0d87a6B0979Ee6FA7af5F";
 
 export {getNetworkStrings, getContractAddress}

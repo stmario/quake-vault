@@ -11,7 +11,7 @@ import {
   IonNote, useIonToast,
 } from '@ionic/react';
 
-import { useLocation } from 'react-router-dom';
+import {useLocation} from 'react-router-dom';
 import {
   barChart,
   barChartOutline,
@@ -21,7 +21,8 @@ import {
 import './Menu.css';
 import {useState} from "react";
 import {ethers} from 'ethers'
-import {ftmTestnetRpc, getNetworkStrings, linkContractAddress} from "../util/chainUtility";
+import {getContractAddress, getNetworkStrings} from "../util/chainUtility";
+import Overview from "../pages/Overview";
 
 interface AppPage {
   url: string;
@@ -72,7 +73,7 @@ const Menu: React.FC = () => {
             setConnButtonText('Wallet Connected');
             getAccountBalance(result[0]);
             const networkStrings = getNetworkStrings(window.ethereum.networkVersion);
-            setDefaultNetwork(networkStrings.name)
+            setDefaultNetwork(networkStrings.name);
             setUsernetworkSymbol(networkStrings.symbol)
           })
           .catch((error: { message: string; }) => {
@@ -84,13 +85,13 @@ const Menu: React.FC = () => {
       console.log('MetaMask not present.');
       present('Please install the MetaMask browser extension to connect.', 5000);
     }
-  }
+  };
 
   // update account, will cause component re-render
   const accountChangedHandler = (newAccount: any) => {
     setDefaultAccount(newAccount);
     getAccountBalance(newAccount.toString());
-  }
+  };
 
   const getAccountBalance = (account: string) => {
     window.ethereum.request({method: 'eth_getBalance', params: [account, 'latest']})
@@ -111,7 +112,7 @@ const Menu: React.FC = () => {
             },
 
           ];
-          const contract = new ethers.Contract(linkContractAddress, genericErc20Abi, ethers.getDefaultProvider(ftmTestnetRpc));
+          const contract = new ethers.Contract(getContractAddress(window.ethereum.networkVersion, "LINK"), genericErc20Abi, ethers.getDefaultProvider(getNetworkStrings(window.ethereum.networkVersion).defaultRpc));
           contract.balanceOf(account)
                 .then((linkBalance: ethers.BigNumberish) =>{
                       setLinkBalance(ethers.utils.formatEther(linkBalance));
