@@ -66,7 +66,8 @@
     ]
   },
   "devDependencies": {
-    "@capacitor/cli": "3.5.0"
+    "@capacitor/cli": "3.5.0",
+    "hardhat": "^2.9.3"
   },
   "description": "An Ionic project, developed for the ChainLink Hackathon Spring 2022"
 }
