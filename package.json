@@ -8,6 +8,7 @@
     "@capacitor/haptics": "1.1.4",
     "@capacitor/keyboard": "1.2.2",
     "@capacitor/status-bar": "1.0.8",
+    "@chainlink/contracts": "^0.4.0",
     "@ionic/react": "^6.0.0",
     "@ionic/react-router": "^6.0.0",
     "@testing-library/jest-dom": "^5.11.9",
@@ -69,5 +70,5 @@
     "@capacitor/cli": "3.5.0",
     "hardhat": "^2.9.3"
   },
-  "description": "An Ionic project, developed for the ChainLink Hackathon Spring 2022"
+  "description": "An Ionic project, developed for the Chainlink Hackathon Spring 2022"
 }

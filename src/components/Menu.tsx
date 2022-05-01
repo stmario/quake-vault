@@ -144,7 +144,7 @@ const Menu: React.FC = () => {
           <IonNote>Address: {defaultAccount}</IonNote>
 
           <IonNote>Native Token Balance: {userNetworkTokenBalance} {userNetworkSymbol}</IonNote>
-          <IonNote>ChainLink Balance: {linkBalance} LINK</IonNote>
+          <IonNote>Chainlink Balance: {linkBalance} LINK</IonNote>
           {appPages.map((appPage, index) => {
             return (
               <IonMenuToggle key={index} autoHide={false}>
