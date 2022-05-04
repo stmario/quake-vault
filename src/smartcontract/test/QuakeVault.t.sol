@@ -9,13 +9,14 @@ import "../mock/ChainlinkMock.sol";
 
 contract QuakeVaultTest is Test {
     QuakeVault public quakeVault;
-    ChainlinkMock public link;
+    LinkMock public link;
 
     function setUp() public {
         quakeVault = new QuakeVault();
-        link = new ChainlinkMock();
+        link = new LinkMock();
         //add some Chainlink
     }
+
 
     function testExample() public {
         assertTrue(true);

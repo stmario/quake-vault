@@ -94,34 +94,36 @@ const Menu: React.FC = () => {
   };
 
   const getAccountBalance = (account: string) => {
-    window.ethereum.request({method: 'eth_getBalance', params: [account, 'latest']})
-        .then((balance: ethers.BigNumberish) => {
-          setUserNetworkTokenBalance((ethers.utils.formatEther(balance)));
-          const genericErc20Abi = [
-            // balanceOf
-            {
-              constant: true,
+      if (window.ethereum && window.ethereum.isMetaMask) {
+          window.ethereum.request({method: 'eth_getBalance', params: [account, 'latest']})
+              .then((balance: ethers.BigNumberish) => {
+                  setUserNetworkTokenBalance((ethers.utils.formatEther(balance)));
+                  const genericErc20Abi = [
+                      // balanceOf
+                      {
+                          constant: true,
 
-              inputs: [{ name: "_owner", type: "address" }],
+                          inputs: [{name: "_owner", type: "address"}],
 
-              name: "balanceOf",
+                          name: "balanceOf",
 
-              outputs: [{ name: "balance", type: "uint256" }],
+                          outputs: [{name: "balance", type: "uint256"}],
 
-              type: "function",
-            },
+                          type: "function",
+                      },
 
-          ];
-          const contract = new ethers.Contract(getContractAddress(window.ethereum.networkVersion, "LINK"), genericErc20Abi, ethers.getDefaultProvider(getNetworkStrings(window.ethereum.networkVersion).defaultRpc));
-          contract.balanceOf(account)
-                .then((linkBalance: ethers.BigNumberish) =>{
-                      setLinkBalance(ethers.utils.formatEther(linkBalance));
-                    }
-                )
-        })
-        .catch((error: { message: string; }) => {
-          present(error.message, 5000);
-        });
+                  ];
+                  const contract = new ethers.Contract(getContractAddress(window.ethereum.networkVersion, "LINK"), genericErc20Abi, ethers.getDefaultProvider(getNetworkStrings(window.ethereum.networkVersion).defaultRpc));
+                  contract.balanceOf(account)
+                      .then((linkBalance: ethers.BigNumberish) => {
+                              setLinkBalance(ethers.utils.formatEther(linkBalance));
+                          }
+                      )
+              })
+              .catch((error: { message: string; }) => {
+                  present(error.message, 5000);
+              });
+      }
   };
 
   const chainChangedHandler = () => {
@@ -131,7 +133,7 @@ const Menu: React.FC = () => {
 
 
   // listen for account changes
-  if (window.ethereum || window.ethereum.on){
+  if (window.ethereum){
     window.ethereum.on('accountsChanged', accountChangedHandler);
     window.ethereum.on('chainChanged', chainChangedHandler);
   }
