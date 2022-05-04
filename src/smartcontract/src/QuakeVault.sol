@@ -5,7 +5,7 @@ import {ChainlinkClient} from "../chainlink/contracts/src/v0.8/ChainlinkClient.s
 import {Chainlink} from "../chainlink/contracts/src/v0.8/Chainlink.sol";
 import {Ownable} from "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
-import "../chainlink/contracts/src/v0.7/vendor/ReentrancyGuard.sol";
+import {ReentrancyGuard} from "../lib/openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
 
 error TransferFailed();
 error NeedsMoreThanZero();
