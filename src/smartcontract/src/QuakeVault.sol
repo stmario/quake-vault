@@ -9,6 +9,7 @@ import {ReentrancyGuard} from "../lib/openzeppelin-contracts/contracts/security/
 
 error TransferFailed();
 error NeedsMoreThanZero();
+error LocationNotSupported();
 
 contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
     using Chainlink for Chainlink.Request;
@@ -16,11 +17,12 @@ contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
 
     //// regions
     // Alaska
+    /**
     uint8 constant akId = 0;
     int32 constant akMinlatitude = 48 * 1000; // in degrees * 1000
     int32 constant akMaxlatitude = 72 * 1000;
     int32 constant akMinlongitude = -200 * 1000;
-    int32 constant akMaxlongitude = -125 * 1000;
+    int32 constant akMaxlongitude = -125 * 1000;*/
     // Conterminous US
     uint8 constant cousId = 1;
     int32 constant cousMinlatitude = 24.6 * 1000;
@@ -34,11 +36,12 @@ contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
     int32 constant ceusMinlongitude = -115 * 1000;
     int32 constant ceusMaxlongitude = -65 * 1000;
     // Hawaii
+    /*
     uint8 constant hiId = 3;
     int32 constant hiMinlatitude = 18 * 1000;
     int32 constant hiMaxlatitude = 23 * 1000;
     int32 constant hiMinlongitude = -161 * 1000;
-    int32 constant hiMaxlongitude = -154 * 1000;
+    int32 constant hiMaxlongitude = -154 * 1000;*/
     // Western US
     uint8 constant wusId = 4;
     int32 constant wusMinlatitude = 24.6 * 1000;
@@ -69,8 +72,11 @@ contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
     function buyInsuranceMediumUSA(uint256 _amount,int32 _lat,int32 _lon)
         external
         nonReentrant
-        moreThanZero(_amount){
+        moreThanZero(_amount)
+        supportedLocation(_lat, _lon)
+    {
         //TODO:
+
     }
 
 
@@ -81,9 +87,25 @@ contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
         _;
     }
 
-    modifier validLocation(int32 lat, int32 _lon){
-        //TODO
+    modifier supportedLocation(int32 _lat, int32 _lon){
+        if (!validLocation(_lat, _lon)){
+            revert LocationNotSupported();
+        }
         _;
+    }
+
+    function validLocation(int32 _lat, int32 _lon) public pure returns(bool){
+        return inBox(_lat, _lon, cousMinlatitude, cousMinlongitude, cousMaxlatitude, cousMaxlongitude)
+            || inBox(_lat, _lon, ceusMinlatitude, ceusMinlongitude, ceusMaxlatitude, ceusMaxlongitude)
+            || inBox(_lat, _lon, wusMinlatitude, wusMinlongitude, wusMaxlatitude, wusMaxlongitude);
+    }
+
+    function inRange(int32 _x, int32 _min, int32 _max) public pure returns(bool){
+        return _min <= _x && _x <= _max;
+    }
+
+    function inBox(int32 _xLat, int32 _xLon, int32 _minLat, int32 _minLon, int32 _maxLat, int32 _maxLon) public pure returns(bool){
+        return inRange(_xLat, _minLat, _maxLat) && inRange(_xLon, _minLon, _maxLon);
     }
 
     /**
