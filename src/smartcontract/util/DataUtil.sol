@@ -8,13 +8,8 @@ library DataUtil {
         if (value == 0){
             return "0";
         }
-        uint256 temp = uint256(value < 0 ? -value: value);
-        uint256 v = temp;
-        uint256 digits;
-        while (temp != 0) {
-            digits++;
-            temp /= 10;
-        }
+        uint256 v = uint256(value < 0 ? -value: value);
+        uint8 digits = nDigits(v);
         bytes memory buffer = new bytes(digits);
         while (v > 0) {
             digits -= 1;
@@ -36,5 +31,18 @@ library DataUtil {
     function intToStringDecimal(int256 value, int256 ndecimals) internal pure returns (string memory){
         //TODO
         return "";
+    }
+
+    /**
+    * Counts the number of digits and returns that value as uint8.
+    */
+    function nDigits(uint256 value) internal pure returns (uint8){
+        uint256 temp = value;
+        uint8 digits;
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
+        return digits;
     }
 }
