@@ -25,12 +25,49 @@ library DataUtil {
     }
 
     /**
-    * Converts an int256 to its ASCII string decimal representation, after being divided by 10 ** ndecimals without losing
+    * Converts an int256 to its ASCII string decimal representation, after being divided by 10 ** nDecimals without losing
     * any numbers behind the point.
     */
-    function intToStringDecimal(int256 value, int256 ndecimals) internal pure returns (string memory){
-        //TODO
-        return "";
+    function intToStringDecimal(int256 value, uint8 nDecimals) internal pure returns (string memory){
+        if (value == 0){
+            return "0.0";
+        }
+        uint256 v = uint256(value < 0 ? -value: value);
+        uint8 digits = nDigits(v);
+        bytes memory bufferLeft;
+        bytes memory bufferRight;
+        uint8 tempNDecimals = nDecimals;
+        if (nDecimals >= digits){
+            bufferLeft = new bytes(1);
+            bufferRight = new bytes(nDecimals);
+            while (tempNDecimals > 0) {
+                tempNDecimals -= 1;
+                bufferRight[tempNDecimals] = bytes1(uint8(48 + uint256(v % 10)));
+                v /= 10;
+            }
+            bufferLeft[0] = bytes1(uint8(48 + uint256(v % 10)));
+        }
+        else {
+            bufferLeft = new bytes(digits - nDecimals);
+            bufferRight = new bytes(nDecimals);
+            while (tempNDecimals > 0) {
+                digits -= 1;
+                tempNDecimals -= 1;
+                bufferRight[tempNDecimals] = bytes1(uint8(48 + uint256(v % 10)));
+                v /= 10;
+            }
+            while (v > 0){
+                digits -= 1;
+                bufferLeft[digits] = bytes1(uint8(48 + uint256(v % 10)));
+                v /= 10;
+            }
+        }
+        if (value < 0) {
+            return string(abi.encodePacked("-", string(bufferLeft), ".", string(bufferRight)));
+        }
+        else {
+            return string(abi.encodePacked(string(bufferLeft), ".", string(bufferRight)));
+        }
     }
 
     /**
