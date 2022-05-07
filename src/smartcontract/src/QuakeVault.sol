@@ -6,6 +6,8 @@ import {Chainlink} from "../chainlink/contracts/src/v0.8/Chainlink.sol";
 import {Ownable} from "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
 import {IERC20} from "../lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
 import {ReentrancyGuard} from "../lib/openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
+import {DataUtil} from "../util/DataUtil.sol";
+import {Strings} from "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 
 error TransferFailed();
 error NeedsMoreThanZero();
@@ -15,6 +17,8 @@ contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
     using Chainlink for Chainlink.Request;
     event Received(address, address, uint);
 
+    uint32 constant coordinateScalingFactor = 1e3;
+    uint8 constant coordinateScalingFactorLog10 = 3;
     //// regions
     // Alaska
     /**
@@ -150,7 +154,10 @@ contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
     }
 
     function composeProbabilityQuery5Mw(string memory _regionQueryString, int32 _lat, int32 _lon, uint8 _timespan) public pure returns(string memory){
-        return string(abi.encodePacked(usgsAPIProbability, _regionQueryString, latEmptyQueryString, _lat, lonEmptyQueryString, _lon, timespanEmptyQueryString, _timespan));
+        return string(abi.encodePacked(usgsAPIProbability, _regionQueryString, latEmptyQueryString, DataUtil.intToStringDecimal(_lat, coordinateScalingFactorLog10),
+            lonEmptyQueryString, DataUtil.intToStringDecimal(_lon, coordinateScalingFactorLog10),
+            distance5Mw,
+            timespanEmptyQueryString, Strings.toString(_timespan)));
     }
 
     function validLocation(int32 _lat, int32 _lon) public pure returns(bool){

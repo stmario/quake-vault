@@ -19,8 +19,8 @@ contract QuakeVaultTest is Test {
 
 
     function testComposeProbabilityQuery5Mw() public {
-        string memory expected = "https://earthquake.usgs.gov/nshmp-haz-ws/probability?edition=E2014&region=CEUS&latitude=36&longitude=-89&distance=50&timespan=1";
-        string memory actual = quakeVault.composeProbabilityQuery5Mw("&region=CEUS", 36, -89, 1);
+        string memory expected = "https://earthquake.usgs.gov/nshmp-haz-ws/probability?edition=E2014&region=CEUS&latitude=36.000&longitude=-89.000&distance=100&timespan=1";
+        string memory actual = quakeVault.composeProbabilityQuery5Mw("&region=CEUS", 36 * 1e3, -89 * 1e3, 1);
         if (compareStrings(expected, actual)){
             assertTrue(true);
         }
