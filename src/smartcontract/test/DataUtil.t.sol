@@ -29,6 +29,18 @@ contract DataUtilTest is Test {
         }
     }
 
+    function testIntToStringNegativeMinVal() public{
+        string memory res = DataUtil.intToString(type(int256).min + 1); //TODO: find out why min value gives under/overflow
+        string memory hh = "-57896044618658097711785492504343953926634992332820282019728792003956564819967";
+        if (keccak256(bytes(res)) == keccak256(bytes(hh))){
+            assertTrue(true);
+        }
+        else {
+            emit log_string(res);
+            fail();
+        }
+    }
+
     function testIntoToStringPositive() public{
         string memory res = DataUtil.intToString(int256(42));
         string memory hh = "42";
@@ -40,4 +52,17 @@ contract DataUtilTest is Test {
             fail();
         }
     }
+
+    function testIntoToStringPositiveMaxValue() public{
+        string memory res = DataUtil.intToString(type(int256).max);
+        string memory hh = "57896044618658097711785492504343953926634992332820282019728792003956564819967";
+        if (keccak256(bytes(res)) == keccak256(bytes(hh))){
+            assertTrue(true);
+        }
+        else {
+            emit log_string(res);
+            fail();
+        }
+    }
+
 }
