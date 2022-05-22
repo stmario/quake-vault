@@ -1,3 +1,4 @@
+//TODO: switch to Moralis, testnet RPC: https://rinkeby.infura.io/v3/8ee4348a5d474bd283db31954ccc4531
 function getNetworkStrings(chainId: number) {
     const networks = {
         1: {name: "Ethereum Mainnet", symbol: "ETH", defaultRpc: "https://mainnet.infura.io/v3/"},

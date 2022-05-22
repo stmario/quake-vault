@@ -1,20 +1,22 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import "forge-std/Test.sol";
-import "../lib/forge-std/src/Test.sol";
-import {ERC20} from "../lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import "../src/QuakeVault.sol";
-import "../mock/ChainlinkMock.sol";
+import "../lib/forge-std/src/Test.sol";
+import "../src/QuakeVaultToken.sol";
 
 contract QuakeVaultTest is Test {
     QuakeVault public quakeVault;
-    LinkMock public link;
+    address constant LINK_ADDRESS_RINKEBY = address(0x01BE23585060835E02B77ef475b0Cc51aA1e0709);
+    address constant QVT_ADDRESS = address(0xdeadbeef); //TODO: change
+    QuakeVaultToken public QVT;
 
     function setUp() public {
+        deal(address(LINK_ADDRESS_RINKEBY), address(msg.sender), uint256(1e5));
+        QVT = new QuakeVaultToken(1e10);
+        bytes memory code = address(QVT).code;
+        vm.etch(QVT_ADDRESS, code);
         quakeVault = new QuakeVault();
-        link = new LinkMock();
-        //add some Chainlink
     }
 
 

@@ -1,22 +1,28 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.13;
 
-import {ChainlinkClient} from "../chainlink/contracts/src/v0.8/ChainlinkClient.sol";
-import {Chainlink} from "../chainlink/contracts/src/v0.8/Chainlink.sol";
-import {Ownable} from "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
-import {IERC20} from "../lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
-import {ReentrancyGuard} from "../lib/openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
-import {DataUtil} from "../util/DataUtil.sol";
-import {Strings} from "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
+import "../lib/chainlink/contracts/src/v0.8/ChainlinkClient.sol";
+import "../lib/chainlink/contracts/src/v0.8/Chainlink.sol";
+import "../lib/openzeppelin-contracts/contracts/access/Ownable.sol";
+import "../lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol";
+
+import "../lib/openzeppelin-contracts/contracts/security/ReentrancyGuard.sol";
+import "../util/DataUtil.sol";
+import "../lib/openzeppelin-contracts/contracts/utils/Strings.sol";
 
 error TransferFailed();
 error NeedsMoreThanZero();
 error LocationNotSupported();
+error InsufficientStableCoin();
+error InsufficientLink();
+error InsufficientSpace();
+error InvalidYears();
 
 contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
     using Chainlink for Chainlink.Request;
     event Received(address, address, uint);
 
+    //TODO make private, CAPITALIZE
     uint32 constant coordinateScalingFactor = 1e3;
     uint8 constant coordinateScalingFactorLog10 = 3;
     //// regions
@@ -67,8 +73,13 @@ contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
     string constant latEmptyQueryString = "&latitude=";
     string constant timespanEmptyQueryString = "&timespan=";
 
+    string constant private PATH_5Mw = "data.[0].yvalues.[8]"; //always exists
+    string constant private PATH_6Mw = "data.[0].yvalues.[18]"; //path may not exist
+    string constant private PATH_7Mw = "data.[0].yvalues.[28]"; //path may not exist
+
+    string constant private PROB_SCALE = "100";
+
     //API events
-    //TODO:
     string constant usgsAPIevent = "https://earthquake.usgs.gov/fdsnws/event/1/count?format=geojson&eventtype=earthquake&minmmi=7";
     string constant startQueryStringEmpty = "&starttime=";
     string constant endQueryStringEmpty = "&endtime=";
@@ -77,39 +88,61 @@ contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
     string constant minMag7 = "&minmag=7&minradiuskm=400";
 
     //ChainLink GET request and multiply for Uint256 oracle
-    address constant oracle = 0x240BaE5A27233Fd3aC5440B5a598467725F7D1cd;
-    bytes32 constant jobId = "1bc4f827ff5942eaaa7540b7dd1e20b9";
-    uint256 constant fee = 0.1 * 1e18;
+    address private oracle = address(0x9904415Db0B70fDd242b6Fe835d2bBc155466e8e);
+    bytes32 private jobId = "69cf5186b05a4497be74f85236e8ba34"; //TODO: change for mainnet before deploying
+    uint256 private fee = 0.1 * 1e18;
 
+    //Used by the callback functions AND ONLY BY THEM
+    uint256 private prob5Mw;
+    uint256 private prob6Mw;
+    uint256 private prob7Mw;
 
     uint8 private ownerCut = 0.01 * 1e2; // in percents
 
     //Tokens used as settlement (stablecoins)
-    address constant daiAddress = 0x6B175474E89094C44Da98b954EedeAC495271d0F; //FTM: 0x8D11eC38a3EB5E956B052f67Da8Bdc9bef8Abf3E;
+    address constant daiAddress = address(0x6B175474E89094C44Da98b954EedeAC495271d0F); //FTM: 0x8D11eC38a3EB5E956B052f67Da8Bdc9bef8Abf3E;
+    address constant QVT_ADDRESS = address(0xdeadbeef); //TODO: change
+    address constant LINK_ADDRESS_RINKEBY = address(0x01BE23585060835E02B77ef475b0Cc51aA1e0709);
 
-    IERC20[] private acceptedTokens = new IERC20[](1);
+    IERC20 private immutable stableCoin;
+    IERC20 private immutable QVT;
 
-    mapping (address => uint256) private riskPoolMediumUSA;
+    struct Insurance {
+        uint256 amount;
+        uint256 start;
+        uint256 end;
+        int32 lat;
+        int32 lon;
+    }
+
+    uint8 constant private MAX_INSURANCE_N = 10;
+    uint8 constant private MIN_YEARS = 1;
+    uint8 constant private MAX_YEARS = 10;
+    uint256 constant private DELAY = 2 weeks; // delay of insurance buy or insurer withdrawal actions to prevent farming swarms of earthquakes
+    //Bought insurance TODO: make secret with zokrates
+    mapping(address => Insurance[]) private insurances;
 
     constructor() Ownable(){
-        //setPublicChainlinkToken(); TODO
-        addAcceptedToken(daiAddress);
+        setChainlinkToken(LINK_ADDRESS_RINKEBY); //TODO: change for mainnet, etc. before deploying
+        stableCoin = IERC20(daiAddress);
+        QVT = IERC20(QVT_ADDRESS);
     }
 
     function setOwnerCut(uint8 _cut) public onlyOwner{
         ownerCut = _cut;
     }
 
-    function addAcceptedToken(address _tokenAddress) public onlyOwner{
-        acceptedTokens.push(IERC20(_tokenAddress));
-    }
 
-    function buyInsurance(uint256 _amount, uint8 _years, int32 _lat,int32 _lon)
+    function buyInsurance(uint256 _amount, uint8 _years, int32 _lat, int32 _lon)
         external
         nonReentrant
         moreThanZero(_amount)
         supportedLocation(_lat, _lon)
-        //TODO: sufficientLink(msg.sender, nqueries)
+        resetProbVars
+        sufficientStableCoin(_amount)
+        sufficientLink(3)
+        sufficientInsuranceSpace
+        validYears(_years)
     {
         //check location
         string memory regionQueryString;
@@ -121,12 +154,32 @@ contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
             //check API for central and eastern US
             regionQueryString = ceusQueryString;
         }
-        //depending on probabilities, buy insurance for riskPoolLow or riskPoolMedium
-        //Chainlink.Request memory requestDistance5Mw = buildChainlinkRequest(jobId, address(this), this.fulfill.selector);
-        string memory queryDistance5Mw = composeProbabilityQuery5Mw(regionQueryString, _lat, _lon, _years);
-        //string constant queryDistance6Mw =
-        //string constant queryDistance7Mw =
-        //request.add("get", )
+        string[3] memory queryDistanceStrings = [composeProbabilityQuery5Mw(regionQueryString, _lat, _lon, _years),
+                                                composeProbabilityQuery6Mw(regionQueryString, _lat, _lon, _years),
+                                                composeProbabilityQuery7Mw(regionQueryString, _lat, _lon, _years)];
+        Chainlink.Request[3] memory requests = [buildChainlinkRequest(jobId, address(this), this.fulfill5Mw.selector),
+                                                buildChainlinkRequest(jobId, address(this), this.fulfill6Mw.selector),
+                                                buildChainlinkRequest(jobId, address(this), this.fulfill7Mw.selector)];
+        requests[0].add("get", queryDistanceStrings[0]);
+        requests[1].add("get", queryDistanceStrings[1]);
+        requests[2].add("get", queryDistanceStrings[2]);
+        requests[0].add("path", PATH_5Mw);
+        requests[1].add("path", PATH_6Mw);
+        requests[2].add("path", PATH_7Mw);
+        requests[0].add("times", PROB_SCALE);
+        requests[1].add("times", PROB_SCALE);
+        requests[2].add("times", PROB_SCALE);
+        sendChainlinkRequestTo(oracle, requests[0], fee);
+        sendChainlinkRequestTo(oracle, requests[1], fee); //TODO: catch error in case value not present
+        sendChainlinkRequestTo(oracle, requests[2], fee); //TODO: dito
+        uint256 totalProb = prob5Mw + prob6Mw + prob7Mw;
+        //transfer QVT
+        QVT.transfer(address(this), totalProb);
+        //transfer amount Dai
+        stableCoin.transfer(address(this), _amount);
+        //register coordinates in mapping
+        uint256 nYears = yearsToUint(_years);
+        insurances[msg.sender].push(Insurance(_amount, block.timestamp + DELAY, block.timestamp + nYears + DELAY, _lat, _lon));
     }
 
     //function claimInsurance(){
@@ -138,6 +191,34 @@ contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
         //TODO
         //anytime, user guarded
     //}
+
+    modifier sufficientStableCoin(uint256 _amount){
+        if (stableCoin.balanceOf(msg.sender) < _amount){
+            revert InsufficientStableCoin();
+        }
+        _;
+    }
+
+    modifier sufficientLink(uint8 _nqueries){
+        if (IERC20(chainlinkTokenAddress()).balanceOf(msg.sender) < _nqueries * fee){
+            revert InsufficientLink();
+        }
+        _;
+    }
+
+    modifier sufficientInsuranceSpace(){
+        if (insurances[msg.sender].length > MAX_INSURANCE_N) {
+            revert InsufficientSpace();
+        }
+        _;
+    }
+
+    modifier validYears(uint8 _years){
+        if (MIN_YEARS > _years && _years > MAX_YEARS){
+            revert InvalidYears();
+        }
+        _;
+    }
 
     modifier moreThanZero(uint256 amount) {
         if (amount == 0) {
@@ -160,6 +241,20 @@ contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
             timespanEmptyQueryString, Strings.toString(_timespan)));
     }
 
+    function composeProbabilityQuery6Mw(string memory _regionQueryString, int32 _lat, int32 _lon, uint8 _timespan) public pure returns(string memory){
+        return string(abi.encodePacked(usgsAPIProbability, _regionQueryString, latEmptyQueryString, DataUtil.intToStringDecimal(_lat, coordinateScalingFactorLog10),
+            lonEmptyQueryString, DataUtil.intToStringDecimal(_lon, coordinateScalingFactorLog10),
+            distance6Mw,
+            timespanEmptyQueryString, Strings.toString(_timespan)));
+    }
+
+    function composeProbabilityQuery7Mw(string memory _regionQueryString, int32 _lat, int32 _lon, uint8 _timespan) public pure returns(string memory){
+        return string(abi.encodePacked(usgsAPIProbability, _regionQueryString, latEmptyQueryString, DataUtil.intToStringDecimal(_lat, coordinateScalingFactorLog10),
+            lonEmptyQueryString, DataUtil.intToStringDecimal(_lon, coordinateScalingFactorLog10),
+            distance7Mw,
+            timespanEmptyQueryString, Strings.toString(_timespan)));
+    }
+
     function validLocation(int32 _lat, int32 _lon) public pure returns(bool){
         return inBox(_lat, _lon, ceusMinlatitude, ceusMinlongitude, ceusMaxlatitude, ceusMaxlongitude)
             || inBox(_lat, _lon, wusMinlatitude, wusMinlongitude, wusMaxlatitude, wusMaxlongitude);
@@ -173,6 +268,34 @@ contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
         return inRange(_xLat, _minLat, _maxLat) && inRange(_xLon, _minLon, _maxLon);
     }
 
+    function yearsToUint(uint8 _years) private pure returns(uint256){
+        return _years *52* 7 * 24 *60*60;
+    }
+
+    function setOracle(address _oracle, bytes32 _jobId, uint256 _fee) public onlyOwner{
+        oracle = _oracle;
+        jobId = _jobId;
+        fee = _fee;
+    }
+
+    function fulfill5Mw(bytes32 _requestId, uint256 _prob) public recordChainlinkFulfillment(_requestId){
+        prob5Mw = _prob;
+    }
+
+    function fulfill6Mw(bytes32 _requestId, uint256 _prob) public recordChainlinkFulfillment(_requestId){
+        prob6Mw = _prob;
+    }
+
+    function fulfill7Mw(bytes32 _requestId, uint256 _prob) public recordChainlinkFulfillment(_requestId){
+        prob7Mw = _prob;
+    }
+
+    modifier resetProbVars(){
+        prob5Mw = 0;
+        prob6Mw = 0;
+        prob7Mw = 0;
+        _;
+    }
     /**
     receive() external payable{
         emit Received(msg.sender, 0x0, msg.value);
