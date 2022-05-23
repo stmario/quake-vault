@@ -115,6 +115,13 @@ contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
         int32 lon;
     }
 
+    struct BuyInsurance {
+        uint256 amount;
+        uint8 nyears;
+        int32 lat;
+        int32 lon;
+    }
+
     uint8 constant private MAX_INSURANCE_N = 10;
     uint8 constant private MIN_YEARS = 1;
     uint8 constant private MAX_YEARS = 10;
@@ -133,20 +140,20 @@ contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
     }
 
 
-    function buyInsurance(uint256 _amount, uint8 _years, int32 _lat, int32 _lon)
+    function buyInsurance(BuyInsurance calldata _ins)
         external
         nonReentrant
-        moreThanZero(_amount)
-        supportedLocation(_lat, _lon)
+        moreThanZero(_ins.amount)
+        supportedLocation(_ins.lat, _ins.lon)
         resetProbVars
-        sufficientStableCoin(_amount)
+        sufficientStableCoin(_ins.amount)
         sufficientLink(3)
         sufficientInsuranceSpace
-        validYears(_years)
+        validYears(_ins.nyears)
     {
         //check location
         string memory regionQueryString;
-        if (_lat < ceusMinlongitude){
+        if (_ins.lat < ceusMinlongitude){
             //check API for western US
             regionQueryString = wusQueryString;
         }
@@ -154,9 +161,9 @@ contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
             //check API for central and eastern US
             regionQueryString = ceusQueryString;
         }
-        string[3] memory queryDistanceStrings = [composeProbabilityQuery5Mw(regionQueryString, _lat, _lon, _years),
-                                                composeProbabilityQuery6Mw(regionQueryString, _lat, _lon, _years),
-                                                composeProbabilityQuery7Mw(regionQueryString, _lat, _lon, _years)];
+        string[3] memory queryDistanceStrings = [composeProbabilityQuery5Mw(regionQueryString, _ins.lat, _ins.lon, _ins.nyears),
+                                                composeProbabilityQuery6Mw(regionQueryString,_ins.lat, _ins.lon, _ins.nyears),
+                                                composeProbabilityQuery7Mw(regionQueryString,_ins.lat, _ins.lon, _ins.nyears)];
         Chainlink.Request[3] memory requests = [buildChainlinkRequest(jobId, address(this), this.fulfill5Mw.selector),
                                                 buildChainlinkRequest(jobId, address(this), this.fulfill6Mw.selector),
                                                 buildChainlinkRequest(jobId, address(this), this.fulfill7Mw.selector)];
@@ -176,10 +183,10 @@ contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
         //transfer QVT
         QVT.transfer(address(this), totalProb);
         //transfer amount Dai
-        stableCoin.transfer(address(this), _amount);
+        stableCoin.transfer(address(this), _ins.amount);
         //register coordinates in mapping
-        uint256 nYears = yearsToUint(_years);
-        insurances[msg.sender].push(Insurance(_amount, block.timestamp + DELAY, block.timestamp + nYears + DELAY, _lat, _lon));
+        uint256 nYears = yearsToUint(_ins.nyears);
+        insurances[msg.sender].push(Insurance(_ins.amount, block.timestamp + DELAY, block.timestamp + nYears + DELAY, _ins.lat, _ins.lon));
     }
 
     //function claimInsurance(){
