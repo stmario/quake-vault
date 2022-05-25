@@ -17,6 +17,7 @@ error InsufficientStableCoin();
 error InsufficientLink();
 error InsufficientSpace();
 error InvalidYears();
+error InsufficientStaked();
 
 contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
     using Chainlink for Chainlink.Request;
@@ -100,7 +101,8 @@ contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
     uint8 private ownerCut = 0.01 * 1e2; // in percents
 
     //Tokens used as settlement (stablecoins)
-    address constant daiAddress = address(0x6B175474E89094C44Da98b954EedeAC495271d0F); //FTM: 0x8D11eC38a3EB5E956B052f67Da8Bdc9bef8Abf3E;
+    //address constant DAI_ADDRESS = address(0x6B175474E89094C44Da98b954EedeAC495271d0F); //FTM: 0x8D11eC38a3EB5E956B052f67Da8Bdc9bef8Abf3E;
+    address constant DAI_ADDRESS_RINKEBY = address(0x95b58a6Bff3D14B7DB2f5cb5F0Ad413DC2940658);
     address constant QVT_ADDRESS = address(0xdeadbeef); //TODO: change
     address constant LINK_ADDRESS_RINKEBY = address(0x01BE23585060835E02B77ef475b0Cc51aA1e0709);
 
@@ -129,9 +131,13 @@ contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
     //Bought insurance TODO: make secret with zokrates
     mapping(address => Insurance[]) private insurances;
 
+    //provided insurance
+    mapping(address => uint256) private insurers;
+    mapping(address => uint256) private unstakePending;
+
     constructor() Ownable(){
         setChainlinkToken(LINK_ADDRESS_RINKEBY); //TODO: change for mainnet, etc. before deploying
-        stableCoin = IERC20(daiAddress);
+        stableCoin = IERC20(DAI_ADDRESS_RINKEBY);
         QVT = IERC20(QVT_ADDRESS);
     }
 
@@ -161,6 +167,7 @@ contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
             //check API for central and eastern US
             regionQueryString = ceusQueryString;
         }
+        //request probabilities for 5Mw, 6Mw and 7Mw earthquakes in the surrounding areas
         string[3] memory queryDistanceStrings = [composeProbabilityQuery5Mw(regionQueryString, _ins.lat, _ins.lon, _ins.nyears),
                                                 composeProbabilityQuery6Mw(regionQueryString,_ins.lat, _ins.lon, _ins.nyears),
                                                 composeProbabilityQuery7Mw(regionQueryString,_ins.lat, _ins.lon, _ins.nyears)];
@@ -177,8 +184,8 @@ contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
         requests[1].add("times", PROB_SCALE);
         requests[2].add("times", PROB_SCALE);
         sendChainlinkRequestTo(oracle, requests[0], fee);
-        sendChainlinkRequestTo(oracle, requests[1], fee); //TODO: catch error in case value not present
-        sendChainlinkRequestTo(oracle, requests[2], fee); //TODO: dito
+        sendChainlinkRequestTo(oracle, requests[1], fee); // fails silently in case value not present (this is OK, old values get cleaned by resetProbVars)
+        sendChainlinkRequestTo(oracle, requests[2], fee);
         uint256 totalProb = prob5Mw + prob6Mw + prob7Mw;
         //transfer QVT
         QVT.transfer(address(this), totalProb);
@@ -187,6 +194,29 @@ contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
         //register coordinates in mapping
         uint256 nYears = yearsToUint(_ins.nyears);
         insurances[msg.sender].push(Insurance(_ins.amount, block.timestamp + DELAY, block.timestamp + nYears + DELAY, _ins.lat, _ins.lon));
+    }
+
+    function getInsurances(address _addr) public view returns(Insurance[] memory){
+        require(msg.sender == _addr); //TODO: use zokrates to actually make secret
+        Insurance[] memory insArr = insurances[_addr];
+        return insArr;
+    }
+
+    function insure(uint256 _amount) external
+        nonReentrant
+        moreThanZero(_amount)
+        sufficientStableCoin(_amount) {
+        //transfer Dai
+        stableCoin.transfer(address(this), _amount);
+        //register insurer
+        insurers[msg.sender] += _amount;
+    }
+
+    function startUnstake(uint256 _amount) external
+        nonReentrant
+        moreThanZero(_amount)
+        sufficientStaked(_amount) {
+
     }
 
     //function claimInsurance(){
@@ -198,6 +228,13 @@ contract QuakeVault is ChainlinkClient, Ownable, ReentrancyGuard{
         //TODO
         //anytime, user guarded
     //}
+
+    modifier sufficientStaked(uint256 _amount) {
+        if (insurers[msg.sender] < _amount){
+            revert InsufficientStaked();
+        }
+        _;
+    }
 
     modifier sufficientStableCoin(uint256 _amount){
         if (stableCoin.balanceOf(msg.sender) < _amount){

@@ -7,16 +7,27 @@ import "../src/QuakeVaultToken.sol";
 
 contract QuakeVaultTest is Test {
     QuakeVault public quakeVault;
+    address constant DAI_ADDRESS_RINKEBY = address(0x95b58a6Bff3D14B7DB2f5cb5F0Ad413DC2940658);
     address constant LINK_ADDRESS_RINKEBY = address(0x01BE23585060835E02B77ef475b0Cc51aA1e0709);
     address constant QVT_ADDRESS = address(0xdeadbeef); //TODO: change
     QuakeVaultToken public QVT;
+    address constant ALICE = address(0xbadbeef);
+    address constant OWNER_ADDR = address(0xdad);
 
     function setUp() public {
-        deal(address(LINK_ADDRESS_RINKEBY), address(msg.sender), uint256(1e5));
+        vm.deal(ALICE, 1 << 128);
+        vm.deal(OWNER_ADDR, 1 << 128);
+        deal(address(LINK_ADDRESS_RINKEBY), ALICE, uint256(1e18 * 1e5));
+        vm.startPrank(OWNER_ADDR);
         QVT = new QuakeVaultToken(1e10);
         bytes memory code = address(QVT).code;
         vm.etch(QVT_ADDRESS, code);
+        vm.stopPrank();
+        deal(DAI_ADDRESS_RINKEBY, ALICE, 1e18 * 1e5);
+        deal(QVT_ADDRESS, ALICE, 1e18 * 1e5);
+        vm.prank(OWNER_ADDR);
         quakeVault = new QuakeVault();
+        vm.startPrank(ALICE);
     }
 
 
@@ -31,6 +42,11 @@ contract QuakeVaultTest is Test {
             emit log_string(string(abi.encodePacked(int32(-10))));
             fail();
         }
+    }
+
+    function testBuyInsuranceHappy() public {
+        //TODO: mock oracle
+        quakeVault.buyInsurance(QuakeVault.BuyInsurance(100, 5, 36 * 1e3, -89 * 1e3));
     }
 
     function compareStrings(string memory a, string memory b) public pure returns (bool) {
