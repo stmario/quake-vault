@@ -12,3 +12,10 @@ export async function fetchEarthQuakeDataLastYear() {
 
     return await window.fetch(query);
 }
+
+export interface earthquakeResponseJSON {
+    type: string;
+    metadata: JSON; //TODO: add details
+    features: [JSON];
+    bbox: [number];
+}

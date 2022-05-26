@@ -1,12 +1,12 @@
 import {
-    IonHeader,
+    IonHeader, IonItem, IonList, IonListHeader,
     IonProgressBar,
     IonTitle,
 } from '@ionic/react';
 import './Overview.css';
 import {getCurrentDate, getDateLastYear} from "../util/dateUtility";
 import {useEffect, useState} from "react";
-import {fetchEarthQuakeDataLastYear} from "../util/dataUtility";
+import {earthquakeResponseJSON, fetchEarthQuakeDataLastYear} from "../util/dataUtility";
 
 
 const Overview: React.FC = () => {
@@ -40,7 +40,12 @@ const Overview: React.FC = () => {
 
     return (
             <IonHeader>
-                <IonTitle>{JSON.stringify(earthQuakesLastYear)}</IonTitle>
+                <IonTitle>Total value locked: 49'239$ (43'423 Dai, 4'543 QVT) </IonTitle>
+                <IonTitle>Current insurance staking ratio: 2.3%</IonTitle>
+                <IonList>
+                    <IonListHeader><IonTitle>Recent Earthquakes:</IonTitle></IonListHeader>
+                    {(JSON.parse(JSON.stringify(earthQuakesLastYear)) as earthquakeResponseJSON).features.map((feature: JSON) => {return (<IonTitle>{JSON.stringify(feature)}</IonTitle>)})}
+                </IonList>
             </IonHeader>
     );
 };
