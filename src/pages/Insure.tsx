@@ -3,6 +3,7 @@ import {IonButton, IonHeader, IonInput, IonItem, IonList, IonListHeader, IonTitl
 import {useState} from "react";
 const Insure: React.FC = () => {
     const [stakeAmount, setStakeAmount] = useState<number>();
+    const [startUnstakeAmount, setStartUnstakeAmount] = useState<number>();
     const [unstakeAmount, setUnstakeAmount] = useState<number>();
 
     return (
@@ -10,6 +11,14 @@ const Insure: React.FC = () => {
             <IonListHeader><IonTitle>Currently staking</IonTitle></IonListHeader>
             <IonList>
                 <IonItem>11'432 Dai</IonItem>
+                <IonItem>
+                    <IonInput value={startUnstakeAmount} placeholder="Enter unstake amount" onIonChange={e => setStartUnstakeAmount(+e.detail.value!)}/>
+                    <IonButton color="secondary">Start 14 days unstaking</IonButton>
+                </IonItem>
+            </IonList>
+            <IonListHeader><IonTitle>Pending unstaking</IonTitle></IonListHeader>
+            <IonList>
+                <IonItem>1'721 Dai, days remaining: 0</IonItem>
                 <IonItem>
                     <IonInput value={unstakeAmount} placeholder="Enter unstake amount" onIonChange={e => setUnstakeAmount(+e.detail.value!)}/>
                     <IonButton color="secondary">Unstake</IonButton>

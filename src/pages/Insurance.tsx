@@ -19,7 +19,7 @@ const Insurance: React.FC = () => {
     const [daiPerYear, setDaiPerYear] = useState<number>();
     return (
         <IonHeader>
-            <IonListHeader><IonTitle>Your insurance:</IonTitle></IonListHeader>
+            <IonListHeader><IonTitle>Your insurance</IonTitle></IonListHeader>
             <IonList>
                 <IonItem>41.159, -107.301 || 328 Dai || 148 days remaining</IonItem>
                 <IonItem>55.239, -99.532 || 50 Dai || 3 days remaining !!! Earthquake at 55.123, -99.423 with MMI 7.3. 5'020 Dai can be claimed !!!<IonButton color="secondary">Claim Insurance</IonButton></IonItem>
